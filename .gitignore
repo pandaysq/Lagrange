@@ -1,0 +1,18 @@
+# Godot
+.godot/
+.mono/
+*.translation
+export_presets.cfg.local
+builds/
+*.apk
+*.aab
+*.exe
+*.pck
+# Local machine settings (never commit)
+.env.local
+local.*.ps1
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
