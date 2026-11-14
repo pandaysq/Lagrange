@@ -33,8 +33,8 @@ core/
   registry/    Content registry, schemas, mod loading
   save/        Serialization, versioning, migrations
   systems/     Added only when gameplay needs them (economy, tech, logistics...)
-view/          Scenes and rendering
-ui/            Menus, HUD, input intents
+view/          Solar-system scene, analytic orbits and camera
+ui/            Simulation HUD; gameplay changes use host commands
 data/base/     Base game content (JSON)
 mods/          User mods
 tests/         Unit tests, fixtures
@@ -42,6 +42,14 @@ tools/         Scripts, validators, asset tools
 docs/          Architecture, ADRs, tasks
 ```
 Start with only the folders needed by the current slice. Do not create empty "engines".
+
+The TASK 002 solar-system view is a schematic, not a scale model: view-specific
+body labels and orbital display parameters live in `view/solar_system.json`.
+They are not simulation state or registry content. Positions are derived from
+the integer simulation tick and each displayed period. The view accumulates
+fractional wall-clock tick time before calling `SimulationHost.advance_frame`,
+because the current core API intentionally accepts whole milliseconds and
+drops any sub-tick remainder per call.
 
 ## 3. Key decisions (see ADRs)
 | # | Topic | Summary |

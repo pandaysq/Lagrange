@@ -1,0 +1,13 @@
+{
+  "description": "View-only schematic in sector (0,0). Radii and body sizes are not to scale. One orbital day = one simulation second; periods rounded to ticks. Not gameplay registry data.",
+  "bodies": [
+    {"id": 1, "content_id": "base:mercury", "name": "Меркурий", "radius": 75, "size": 3, "period_ticks": 880, "phase": 0.5, "color": "#baa89a"},
+    {"id": 2, "content_id": "base:venus", "name": "Венера", "radius": 115, "size": 5, "period_ticks": 2247, "phase": 2.4, "color": "#e5c187"},
+    {"id": 3, "content_id": "base:earth", "name": "Земля", "radius": 160, "size": 6, "period_ticks": 3653, "phase": 4.9, "color": "#64bcd9"},
+    {"id": 4, "content_id": "base:mars", "name": "Марс", "radius": 205, "size": 4, "period_ticks": 6870, "phase": 3.5, "color": "#d98b6c"},
+    {"id": 5, "content_id": "base:jupiter", "name": "Юпитер", "radius": 285, "size": 12, "period_ticks": 43326, "phase": 0.8, "color": "#d7b18b"},
+    {"id": 6, "content_id": "base:saturn", "name": "Сатурн", "radius": 365, "size": 10, "period_ticks": 107592, "phase": 2.7, "color": "#decda0"},
+    {"id": 7, "content_id": "base:uranus", "name": "Уран", "radius": 440, "size": 7, "period_ticks": 306885, "phase": 5.7, "color": "#99d1d2"},
+    {"id": 8, "content_id": "base:neptune", "name": "Нептун", "radius": 510, "size": 7, "period_ticks": 601820, "phase": 4.0, "color": "#758de0"}
+  ]
+}
