@@ -1,0 +1,10 @@
+; Engine configuration file.
+; Minimal project config for the headless core skeleton (TASK 001).
+; No main scene yet: view/ui comes with TASK 002.
+
+config_version=5
+
+[application]
+
+config/name="Lagrange"
+config/features=PackedStringArray("4.5")
