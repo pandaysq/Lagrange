@@ -25,6 +25,7 @@ core/commands/Command, PauseCommand, SetSpeedCommand
 core/events/  EventBus, SimEvent
 core/gen/     Rng (own seeded PCG32)
 core/registry/ContentRegistry (JSON content packs, validation)
+core/save/    SaveManager (save v1: format version, migrations, chunks)
 data/base/    Base game content (JSON, namespace "base")
 ```
 
@@ -137,6 +138,36 @@ if report["ok"]:
 - Extending: add a section to `_PACK_SECTIONS` with a field schema.
 - Mod manifests, dependency load order and override rules are NOT here yet
   (future ADR work on top of ADR-0006).
+
+## SaveManager (save v1, ADR-0007)
+
+A save is one JSON document with `format_version` (currently 1),
+`generator_version` (placeholder 1 until generation lands, ADR-0008), an
+active mod list (`mods: [{id, version}]`, string ids only) and
+sector-chunked data under `chunks` (the global chunk is `core`, holding the
+whole `SimState.to_dict()`).
+
+```gdscript
+var doc := SaveManager.build_document(host.get_state_view())
+SaveManager.write_save_file("user://save.json", doc, errors)
+var loaded := SaveManager.read_save_file("user://save.json", errors)
+var state := SaveManager.state_from_document(loaded, errors) # null on failure
+```
+
+- `state_from_document` checks the format version: newer documents are
+  rejected; older ones must migrate through the version chain (hard rule 10).
+  No migrations exist yet (v1 is the first version); a missing link is an
+  error, never a silent load.
+- Int64 precision: Godot parses JSON numbers as double, so values beyond
+  2^53 (seeds, generator state) are encoded as decimal strings and decoded
+  back to int for known sim-state fields. Event data values keep their
+  stored type (documented v1 limitation).
+- `document_errors(doc)` validates the shape (mods entries, chunks,
+  core chunk presence) without loading.
+- Fixture save: `tests/fixtures/saves/v1_base.json`; the mandatory test
+  loads every fixture there and continues the simulation deterministically.
+- Where saves live (`user://` paths, slots, autosave) is the view/ui layer's
+  business; the core only builds/parses documents and file contents.
 
 ## Testing
 
