@@ -23,6 +23,8 @@ func _initialize() -> void:
 	_run_test("speed_pause_frame_rules", _test_speed_pause)
 	_run_test("determinism_10k_ticks", _test_determinism)
 	_run_test("serialize_roundtrip_keeps_hash", _test_roundtrip)
+	_run_test("registry_load_and_validate", _test_registry)
+	_run_test("registry_pack_file", _test_registry_file)
 	print("== %d checks passed, %d failed" % [_pass_count, _fail_count])
 	quit(1 if _fail_count > 0 else 0)
 
@@ -252,3 +254,113 @@ func _test_roundtrip() -> void:
 		"restored state continues identically"
 	)
 	check_eq(restored.load_dict({}), false, "load_dict rejects invalid dictionaries")
+
+
+func _valid_pack() -> Dictionary:
+	return {
+		"pack_id": "base",
+		"namespace": "base",
+		"items": [
+			{"id": "iron_ore", "name": "Iron ore"},
+			{"id": "stone", "name": "Stone"},
+		],
+		"buildings": [
+			{"id": "mine", "name": "Mine", "produces": [{"item": "base:iron_ore", "per_ticks": 100, "amount": 1}]},
+		],
+	}
+
+
+func _test_registry() -> void:
+	var reg := ContentRegistry.new()
+	var report := reg.load_pack(_valid_pack())
+	check_eq(report["ok"], true, "valid pack loads: %s" % [report["errors"]])
+	check_eq(report["registered"], 3, "three defs registered")
+	check_eq(report["errors"].size(), 0, "no errors for valid pack")
+
+	check(reg.has_def("item", "base:iron_ore"), "item id is namespaced")
+	check_eq(reg.get_def("item", "base:iron_ore").get("name", ""), "Iron ore", "item fields kept")
+	check_eq(reg.get_def("item", "iron_ore"), {}, "local id alone is not a key")
+	check(reg.has_def("building", "base:mine"), "building registered")
+	var produces: Array = reg.get_def("building", "base:mine").get("produces", [])
+	check_eq(produces[0].get("item", ""), "base:iron_ore", "building references full item id")
+	check_eq(reg.get_def("item", "base:stone").get("id", ""), "base:stone", "stored def id is the full namespaced id")
+
+	# Deterministic iteration: ids are sorted.
+	check_eq(reg.ids("item"), ["base:iron_ore", "base:stone"], "ids sorted")
+	check_eq(reg.ids("shield").size(), 0, "unknown kind is empty")
+
+	# Errors: missing required field, wrong type, bad id format, unknown field.
+	var bad := {
+		"pack_id": "base",
+		"namespace": "base",
+		"items": [
+			{"id": "no_name"},
+			{"id": "Bad_Id", "name": "Bad"},
+			{"id": "extra", "name": "Extra", "mass": 5},
+		],
+	}
+	var bad_report := reg.load_pack(bad)
+	check_eq(bad_report["ok"], false, "invalid pack rejected")
+	check(bad_report["errors"].size() >= 3, "all three bad entries reported: %s" % [bad_report["errors"]])
+	check(bad_report["errors"].any(func(e: String) -> bool: return e.contains("no_name") and e.contains("missing field 'name'")), "missing name reported")
+	check(bad_report["errors"].any(func(e: String) -> bool: return e.contains("Bad_Id")), "bad id format reported")
+	check(bad_report["errors"].any(func(e: String) -> bool: return e.contains("unknown field 'mass'")), "unknown field reported")
+	check(not reg.has_def("item", "base:no_name"), "atomic pack: rejected entries not registered")
+
+	# Duplicate id (in pack and across packs) is rejected, first def stays.
+	var dup := {
+		"pack_id": "dup",
+		"namespace": "base",
+		"items": [{"id": "iron_ore", "name": "Impostor"}],
+	}
+	var dup_report := reg.load_pack(dup)
+	check_eq(dup_report["ok"], false, "duplicate id rejected across packs")
+	check_eq(reg.get_def("item", "base:iron_ore").get("name", ""), "Iron ore", "first definition kept")
+
+	# Reference errors and int checks.
+	var bad_refs := {
+		"pack_id": "refs",
+		"namespace": "base",
+		"buildings": [
+			{"id": "bad_mine", "name": "Bad", "produces": [{"item": "base:gold_ore", "per_ticks": 0, "amount": 1.5}]},
+		],
+		"shields": [],
+	}
+	var ref_report := reg.load_pack(bad_refs)
+	check_eq(ref_report["ok"], false, "pack with bad references rejected")
+	var msgs: String = " | ".join(PackedStringArray(ref_report["errors"]))
+	check(msgs.contains("unknown item id 'base:gold_ore'"), "unknown reference reported")
+	check(msgs.contains("per_ticks"), "per_ticks < min reported")
+	check(msgs.contains("amount"), "float amount (wrong type) reported")
+	check(msgs.contains("unknown pack section 'shields'"), "unknown pack section reported")
+	check(not reg.has_def("building", "base:bad_mine"), "atomic pack: bad building not registered")
+
+	# Duplicate id within one pack.
+	var dup_in_pack := {
+		"pack_id": "dup2",
+		"namespace": "other",
+		"items": [
+			{"id": "same", "name": "First"},
+			{"id": "same", "name": "Second"},
+		],
+	}
+	check_eq(reg.load_pack(dup_in_pack)["ok"], false, "duplicate id inside one pack rejected")
+
+
+func _test_registry_file() -> void:
+	var reg := ContentRegistry.new()
+	var report := reg.load_pack_file("res://data/base/content.json")
+	check_eq(report["ok"], true, "data/base/content.json loads: %s" % [report["errors"]])
+	check_eq(report["registered"], 4, "base pack registers 3 items + 1 building")
+	check(reg.has_def("item", "base:copper_ore"), "base:copper_ore registered from file")
+	check(reg.has_def("building", "base:mine"), "base:mine registered from file")
+
+	var errors: Array[String] = []
+	var body := ContentRegistry.read_pack_file("res://tests/fixtures/registry/invalid_json.json", errors)
+	check_eq(body, {}, "broken JSON yields empty body")
+	check_eq(errors.size(), 1, "broken JSON yields one error")
+
+	errors = []
+	body = ContentRegistry.read_pack_file("res://tests/fixtures/registry/missing.json", errors)
+	check_eq(body, {}, "missing file yields empty body")
+	check_eq(errors.size(), 1, "missing file yields one error")

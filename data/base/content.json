@@ -1,0 +1,18 @@
+{
+	"pack_id": "base",
+	"namespace": "base",
+	"items": [
+		{"id": "iron_ore", "name": "Iron ore"},
+		{"id": "copper_ore", "name": "Copper ore"},
+		{"id": "stone", "name": "Stone"}
+	],
+	"buildings": [
+		{
+			"id": "mine",
+			"name": "Mine",
+			"produces": [
+				{"item": "base:iron_ore", "per_ticks": 100, "amount": 1}
+			]
+		}
+	]
+}

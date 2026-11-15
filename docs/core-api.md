@@ -24,6 +24,8 @@ core/sim/     Simulation, SimState, EventQueue, StateHash, SimConstants
 core/commands/Command, PauseCommand, SetSpeedCommand
 core/events/  EventBus, SimEvent
 core/gen/     Rng (own seeded PCG32)
+core/registry/ContentRegistry (JSON content packs, validation)
+data/base/    Base game content (JSON, namespace "base")
 ```
 
 ## SimulationHost (core/host/simulation_host.gd)
@@ -103,6 +105,39 @@ The engine's global random number generator is never used. One draw per
 tick (`SimConstants.RNG_DRAWS_PER_TICK = 1`) is a placeholder binding the
 stream to the tick loop until gameplay mechanics define real draws.
 
+## ContentRegistry (ADR-0006)
+
+Content lives in JSON packs under `data/` (base pack: `data/base/content.json`)
+and is registered by string ids with a namespace (`base:iron_ore`). Saves and
+commands must reference these ids, never indexes. The base pack ships three
+items (`base:iron_ore`, `base:copper_ore`, `base:stone`) and one building
+(`base:mine`) with an analytic placeholder production entry
+(`produces: [{item, per_ticks, amount}]`, integer values).
+
+```gdscript
+var reg := ContentRegistry.new()
+var report := reg.load_pack_file("res://data/base/content.json")
+if report["ok"]:
+    var mine := reg.get_def("building", "base:mine")
+```
+
+- `load_pack(pack: Dictionary) -> Dictionary` — validate + register one pack
+  (a dictionary with `pack_id`, `namespace` and optional sections `items`,
+  `buildings`). Returns `{"ok", "errors", "registered"}`. A pack is atomic:
+  on any error nothing from it is registered.
+- `load_pack_file(path) -> Dictionary` — same, reading a JSON file
+  (`res://...`); file/JSON problems are reported as errors.
+- `get_def(kind, full_id) -> Dictionary` / `has_def(kind, full_id)` /
+  `ids(kind) -> Array[String]` (sorted, deterministic).
+- Validation: id pattern `[a-z][a-z0-9_]*`, required/typed fields, unknown
+  fields and sections rejected, integer fields (JSON floats with exact
+  integer values are normalized to int at registration), reference fields
+  (e.g. `produces[].item`) must point to ids registered earlier (load order
+  matters, like mod packs), duplicate ids rejected within and across packs.
+- Extending: add a section to `_PACK_SECTIONS` with a field schema.
+- Mod manifests, dependency load order and override rules are NOT here yet
+  (future ADR work on top of ADR-0006).
+
 ## Testing
 
 `tools/run_tests.ps1` (requires `GODOT_BIN`, see `docs/LOCAL_SETUP.md`)
@@ -110,4 +145,5 @@ runs `tests/run_all.gd` headless: prints PASS/FAIL per test, exit code
 non-zero on failure. Covered: RNG reproducibility, queue ordering,
 commands validate/apply/emit, speed/pause frame rules, determinism
 (10 000 ticks, same seed + script → equal hash, different seed → different
-hash), serialize roundtrip keeps the hash.
+hash), serialize roundtrip keeps the hash, registry load/validation
+(positive and negative packs, file reading, atomicity, duplicates, refs).
