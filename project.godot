@@ -1,10 +1,21 @@
 ; Engine configuration file.
-; Minimal project config for the headless core skeleton (TASK 001).
-; No main scene yet: view/ui comes with TASK 002.
+; Singleplayer scene over the independent simulation host.
 
 config_version=5
 
 [application]
 
 config/name="Lagrange"
+run/main_scene="res://view/solar_system.tscn"
 config/features=PackedStringArray("4.5")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.018, 0.028, 0.055, 1)

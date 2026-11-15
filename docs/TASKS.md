@@ -5,9 +5,30 @@ Ownership rule: a file/folder is owned by one agent at a time. Do not edit files
 | ID | Title | Owner | Branch | Status |
 |----|-------|-------|--------|--------|
 | 001 | Core skeleton: tick, events, commands, host, RNG, hash, tests | OpenCode (GLM 5.3) | `agent/opencode/core-skeleton` | IN REVIEW (PR) |
-| 002 | Solar system view (2D orbits) and HUD on top of host API | Replit | `agent/replit/solar-view` | BLOCKED by 001 |
+| 002 | Solar system view (2D orbits) and HUD on top of host API | Replit | `agent/replit/solar-view` | IN REVIEW |
 | 003 | Registry + base JSON data + validation | OpenCode | `agent/opencode/registry` | BLOCKED by 001 |
 | 004 | Save/Load v1 + fixture save | OpenCode | `agent/opencode/save-v1` | BLOCKED by 001, 003 |
+
+---
+
+## TASK 002 — Solar system view and HUD
+
+**Owner:** Replit. **Owns:** `view/`, `ui/`, and view smoke tests. **Depends on:** TASK 001 core host API.
+
+### Delivered
+- A view-only, JSON-defined schematic of the Sun and eight planets with deterministic analytic circular orbits.
+- Camera overview, mouse drag / wheel zoom, touch pan / pinch zoom.
+- A touch-sized HUD for pause/resume, ×1/×10/×100 speed, zoom, and overview; all simulation changes go through commands on `SimulationHost`.
+- A view-layer fractional-time accumulator so frame intervals shorter than one simulation tick are not discarded.
+- A headless integration smoke test for scene setup, host commands, pause, speed, and time advancement.
+
+### Not included
+Registry-backed planet data, orbital gameplay, planet selection, buildings, resources, save/load, Android export, and multiplayer.
+
+### Verification
+Run `godot --headless --path . --script res://tests/run_all.gd` and
+`godot --headless --path . --script res://tests/view_smoke.gd`.
+The core test runner also passes with Godot 4.5.1.
 
 ---
 
