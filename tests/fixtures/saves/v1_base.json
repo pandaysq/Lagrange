@@ -1,0 +1,31 @@
+{
+	"format_version": 1,
+	"generator_version": 1,
+	"mods": [],
+	"chunks": {
+		"core": {
+			"sim_state": {
+				"tick": 500,
+				"seed": "123456789012345678",
+				"paused": 0,
+				"speed": 10,
+				"player_id": 1,
+				"rng_state": {
+					"state": "3874039196759395745",
+					"inc": 1
+				},
+				"event_queue": {
+					"next_seq": 1,
+					"entries": [
+						{
+							"tick": 600,
+							"seq": 0,
+							"kind": "scheduled",
+							"data": {"v": 2}
+						}
+					]
+				}
+			}
+		}
+	}
+}

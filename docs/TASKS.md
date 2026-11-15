@@ -6,8 +6,8 @@ Ownership rule: a file/folder is owned by one agent at a time. Do not edit files
 |----|-------|-------|--------|--------|
 | 001 | Core skeleton: tick, events, commands, host, RNG, hash, tests | OpenCode (GLM 5.3) | `agent/opencode/core-skeleton` | DONE (PR #1 merged) |
 | 002 | Solar system view (2D orbits) and HUD on top of host API | Replit | `agent/replit/solar-view` | DONE (PR #2 merged) |
-| 003 | Registry + base JSON data + validation | OpenCode | `agent/opencode/registry` | IN REVIEW (PR) |
-| 004 | Save/Load v1 + fixture save | OpenCode | `agent/opencode/save-v1` | BLOCKED by 003 |
+| 003 | Registry + base JSON data + validation | OpenCode | `agent/opencode/registry` | DONE (PR #4 merged) |
+| 004 | Save/Load v1 + fixture save | OpenCode | `agent/opencode/save-v1` | IN REVIEW (PR) |
 
 ---
 

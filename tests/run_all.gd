@@ -25,6 +25,8 @@ func _initialize() -> void:
 	_run_test("serialize_roundtrip_keeps_hash", _test_roundtrip)
 	_run_test("registry_load_and_validate", _test_registry)
 	_run_test("registry_pack_file", _test_registry_file)
+	_run_test("save_roundtrip_user_file", _test_save_roundtrip)
+	_run_test("save_fixtures_load", _test_save_fixtures)
 	print("== %d checks passed, %d failed" % [_pass_count, _fail_count])
 	quit(1 if _fail_count > 0 else 0)
 
@@ -364,3 +366,108 @@ func _test_registry_file() -> void:
 	body = ContentRegistry.read_pack_file("res://tests/fixtures/registry/missing.json", errors)
 	check_eq(body, {}, "missing file yields empty body")
 	check_eq(errors.size(), 1, "missing file yields one error")
+
+
+func _test_save_roundtrip() -> void:
+	# Seed beyond 2^53: the save layer must keep int64 precision.
+	var host := LocalHost.new(123456789012345678)
+	host.send_command(SetSpeedCommand.new(10))
+	host.advance(123)
+
+	var doc := SaveManager.build_document(host.get_state_view())
+	check_eq(SaveManager.document_errors(doc).size(), 0, "built document is structurally valid")
+	check_eq(doc["format_version"], SaveManager.FORMAT_VERSION, "format_version is current")
+	var sim_doc: Dictionary = doc["chunks"]["core"]["sim_state"]
+	check_eq(sim_doc["seed"], "123456789012345678", "int64 beyond 2^53 encoded as decimal string")
+
+	var with_mods := SaveManager.build_document(host.get_state_view(), [{"id": "base", "version": "1.0.0"}])
+	check_eq(String(with_mods["mods"][0]["id"]), "base", "mod list stored with versions")
+
+	var errors: Array[String] = []
+	var path := "user://lagrange_test_save.json"
+	check(SaveManager.write_save_file(path, doc, errors), "save file written: %s" % [errors])
+	var loaded := SaveManager.read_save_file(path, errors)
+	check_eq(SaveManager.document_errors(loaded).size(), 0, "loaded file shape valid: %s" % [errors])
+
+	var restored := SaveManager.state_from_document(loaded, errors)
+	check(restored != null, "state restored from file: %s" % [errors])
+	check_eq(errors.size(), 0, "no restore errors")
+	check_eq(
+		StateHash.hash_state(restored),
+		StateHash.hash_state(host.get_state_view()),
+		"file roundtrip restores the exact state"
+	)
+	check_eq(restored.seed, 123456789012345678, "large int64 seed survives")
+	check_eq(restored.tick, 123, "tick restored")
+	check_eq(restored.speed, 10, "speed restored")
+
+	# Restored save continues deterministically alongside the original.
+	host.advance(100)
+	var sim2 := Simulation.from_state(restored)
+	sim2.advance(100)
+	check_eq(
+		StateHash.hash_state(sim2.state),
+		StateHash.hash_state(host.get_state_view()),
+		"restored save continues identically"
+	)
+
+	# Negative cases: newer version, missing migration link, broken structure.
+	errors = []
+	var newer := doc.duplicate(true)
+	newer["format_version"] = 99
+	check_eq(SaveManager.state_from_document(newer, errors), null, "newer version rejected")
+	check(errors.any(func(e: String) -> bool: return e.contains("newer version")), "newer version reported")
+
+	errors = []
+	var ancient := doc.duplicate(true)
+	ancient["format_version"] = 0
+	check_eq(SaveManager.state_from_document(ancient, errors), null, "version 0 without migration rejected")
+	check(errors.any(func(e: String) -> bool: return e.contains("no migration")), "missing migration reported")
+
+	errors = []
+	var nocore := {"format_version": 1, "generator_version": 1, "mods": [], "chunks": {}}
+	check_eq(SaveManager.state_from_document(nocore, errors), null, "missing core chunk rejected")
+	check(SaveManager.document_errors(nocore).any(func(e: String) -> bool: return e.contains("core")), "missing core reported by shape check")
+
+	errors = []
+	var bad_tick := doc.duplicate(true)
+	bad_tick["chunks"]["core"]["sim_state"]["tick"] = 1.5
+	check_eq(SaveManager.state_from_document(bad_tick, errors), null, "non-integral tick rejected")
+
+	errors = []
+	var bad_mods := doc.duplicate(true)
+	bad_mods["mods"] = [42]
+	check(SaveManager.document_errors(bad_mods).size() > 0, "bad mods entry rejected by shape check")
+
+	errors = []
+	var unknown := doc.duplicate(true)
+	unknown["chunks"]["core"]["sim_state"]["frobnicate"] = 1
+	check_eq(SaveManager.state_from_document(unknown, errors), null, "unknown sim_state field rejected")
+
+	# Cleanup.
+	check_eq(DirAccess.open("user://").remove("lagrange_test_save.json"), OK, "test save removed")
+
+
+func _test_save_fixtures() -> void:
+	var dir := DirAccess.open("res://tests/fixtures/saves")
+	check(dir != null, "saves fixtures directory opens")
+	if dir == null:
+		return
+	var count := 0
+	for f in dir.get_files():
+		if not String(f).ends_with(".json"):
+			continue
+		count += 1
+		var errors: Array[String] = []
+		var doc := SaveManager.read_save_file("res://tests/fixtures/saves/%s" % f, errors)
+		check(doc.size() > 0, "fixture %s parsed" % f)
+		check_eq(SaveManager.document_errors(doc).size(), 0, "fixture %s shape valid" % f)
+		var state := SaveManager.state_from_document(doc, errors)
+		check(state != null, "fixture %s loads and migrates: %s" % [f, errors])
+		if state != null:
+			check_eq(state.tick, 500, "fixture %s tick restored" % f)
+			check_eq(state.seed, 123456789012345678, "fixture %s large seed restored" % f)
+			var sim := Simulation.from_state(state)
+			sim.advance(10)
+			check(StateHash.hash_state(sim.state) != 0, "fixture %s continues after load" % f)
+	check(count >= 1, "at least one fixture save present")
