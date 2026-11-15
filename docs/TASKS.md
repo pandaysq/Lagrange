@@ -4,10 +4,10 @@ Ownership rule: a file/folder is owned by one agent at a time. Do not edit files
 
 | ID | Title | Owner | Branch | Status |
 |----|-------|-------|--------|--------|
-| 001 | Core skeleton: tick, events, commands, host, RNG, hash, tests | OpenCode (GLM 5.3) | `agent/opencode/core-skeleton` | IN REVIEW (PR) |
-| 002 | Solar system view (2D orbits) and HUD on top of host API | Replit | `agent/replit/solar-view` | IN REVIEW |
-| 003 | Registry + base JSON data + validation | OpenCode | `agent/opencode/registry` | BLOCKED by 001 |
-| 004 | Save/Load v1 + fixture save | OpenCode | `agent/opencode/save-v1` | BLOCKED by 001, 003 |
+| 001 | Core skeleton: tick, events, commands, host, RNG, hash, tests | OpenCode (GLM 5.3) | `agent/opencode/core-skeleton` | DONE (PR #1 merged) |
+| 002 | Solar system view (2D orbits) and HUD on top of host API | Replit | `agent/replit/solar-view` | DONE (PR #2 merged) |
+| 003 | Registry + base JSON data + validation | OpenCode | `agent/opencode/registry` | TODO (unblocked) |
+| 004 | Save/Load v1 + fixture save | OpenCode | `agent/opencode/save-v1` | BLOCKED by 003 |
 
 ---
 
